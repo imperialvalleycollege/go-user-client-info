@@ -40,8 +40,11 @@ var upperTemplate = template.Must(template.New("upper").Parse(upperTemplateHTML)
 
 func upper(w http.ResponseWriter, r *http.Request) {
 	//strEntered := r.FormValue("str")
+	// https://golang.org/pkg/strings/#Split
 	strEntered := r.RemoteAddr
-	strUpper := strings.ToUpper(strEntered)
+	ipAddr := strings.Split(strEntered, ":")
+	strUpper := strings.ToUpper(ipAddr[0])
+	// 	strUpper := strings.ToUpper(strEntered)
 	err := upperTemplate.Execute(w, strUpper)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
