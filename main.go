@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"html/template"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"strings"
@@ -39,16 +40,27 @@ func GetPort() string {
 var upperTemplate = template.Must(template.New("upper").Parse(upperTemplateHTML))
 
 func upper(w http.ResponseWriter, r *http.Request) {
-	//strEntered := r.FormValue("str")
-	// https://golang.org/pkg/strings/#Split
+
 	strEntered := r.RemoteAddr
 	ipAddr := strings.Split(strEntered, ":")
 	strUpper := strings.ToUpper(ipAddr[0])
-	// 	strUpper := strings.ToUpper(strEntered)
-	err := upperTemplate.Execute(w, strUpper)
+
+	var userInfo UserInfo
+	userInfo.Ip = strUpper
+	hostnames, _ := net.LookupAddr(strUpper)
+	userInfo.Hostname = hostnames[0]
+
+	err := upperTemplate.Execute(w, userInfo)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
+}
+
+// ip and hostname for user info struct
+// https://www.golang-book.com/books/intro/9
+type UserInfo struct {
+	Ip       string
+	Hostname string
 }
 
 const upperTemplateHTML = `
@@ -62,7 +74,8 @@ const upperTemplateHTML = `
 <body>
 	<h1>String Upper Results</h1>
 	<p>The Uppercase of the string that you had entered is:</p>
-	<pre>{{html .}}</pre>
+	<pre>{{html .Ip}}</pre>
+  <pre>{{html .Hostname}}</pre>
 </body>
 </html>
 `
