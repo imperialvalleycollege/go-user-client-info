@@ -11,10 +11,10 @@ import (
 )
 
 func main() {
-	fs := http.FileServer(http.Dir("public"))
-	http.Handle("/public/", http.StripPrefix("/public/", fs))
-
-	http.HandleFunc("/upper", upper)
+	// 	fs := http.FileServer(http.Dir("public"))
+	// 	http.Handle("/public/", http.StripPrefix("/public/", fs))
+	http.HandleFunc("/", root)
+	http.HandleFunc("/tech", tech)
 
 	fmt.Println("Listening...")
 	err := http.ListenAndServe(GetPort(), nil)
@@ -31,15 +31,14 @@ func GetPort() string {
 		port = os.Args[1]
 	}
 	if port == "" {
-		port = "4747"
+		port = "3000"
 		fmt.Println("INFO: No PORT environment variable detected, defaulting to " + port)
 	}
 	return ":" + port
 }
 
-var upperTemplate = template.Must(template.New("upper").Parse(upperTemplateHTML))
-
-func upper(w http.ResponseWriter, r *http.Request) {
+// Route functions.
+func root(w http.ResponseWriter, r *http.Request) {
 
 	strEntered := r.RemoteAddr
 	ipAddr, _, _ := net.SplitHostPort(strEntered)
@@ -52,30 +51,37 @@ func upper(w http.ResponseWriter, r *http.Request) {
 		userInfo.Hostname = strings.TrimRight(hostnames[0], ".")
 	}
 
-	err := upperTemplate.Execute(w, userInfo)
+	err := rootTemplate.Execute(w, userInfo)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
 
-// ip and hostname for user info struct
-// https://www.golang-book.com/books/intro/9
+func tech(w http.ResponseWriter, r *http.Request) {
+	// The logic for outputting for our in-memory database (with recent request info) should go in here:
+}
+
+// Structures.
 type UserInfo struct {
 	Ip       string
 	Hostname string
 }
 
-const upperTemplateHTML = `
+// Templates.
+var rootTemplate = template.Must(template.New("root").Parse(rootTemplateHTML))
+
+// Page templates.
+const rootTemplateHTML = `
 <!DOCTYPE html>
 <html>
 <head>
 	<meta charset="utf-8">
 	<link rel="stylesheet" href="css/upper.css">
-	<title>String Upper Results</title>
+	<title>User Client Information</title>
 </head>
 <body>
-	<h1>String Upper Results</h1>
-	<p>The Uppercase of the string that you had entered is:</p>
+	<h1>Client Information</h1>
+	<p>The IP address and Host:</p>
 	<pre>{{html .Ip}}</pre>
   <pre>{{html .Hostname}}</pre>
 </body>
