@@ -48,7 +48,10 @@ func upper(w http.ResponseWriter, r *http.Request) {
 	var userInfo UserInfo
 	userInfo.Ip = strUpper
 	hostnames, _ := net.LookupAddr(strUpper)
-	userInfo.Hostname = hostnames[0]
+
+	if len(hostnames) >= 1 {
+		userInfo.Hostname = hostnames[0]
+	}
 
 	err := upperTemplate.Execute(w, userInfo)
 	if err != nil {
