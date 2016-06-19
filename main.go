@@ -2,14 +2,18 @@ package main
 
 import (
 	"fmt"
+	"html/template"
 	"log"
 	"net/http"
 	"os"
+	"strings"
 )
 
 func main() {
 	fs := http.FileServer(http.Dir("public"))
 	http.Handle("/public/", http.StripPrefix("/public/", fs))
+
+	http.HandleFunc("/upper", upper)
 
 	fmt.Println("Listening...")
 	err := http.ListenAndServe(GetPort(), nil)
@@ -31,3 +35,31 @@ func GetPort() string {
 	}
 	return ":" + port
 }
+
+var upperTemplate = template.Must(template.New("upper").Parse(upperTemplateHTML))
+
+func upper(w http.ResponseWriter, r *http.Request) {
+	//strEntered := r.FormValue("str")
+	strEntered := r.RemoteAddr
+	strUpper := strings.ToUpper(strEntered)
+	err := upperTemplate.Execute(w, strUpper)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+const upperTemplateHTML = `
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<link rel="stylesheet" href="css/upper.css">
+	<title>String Upper Results</title>
+</head>
+<body>
+	<h1>String Upper Results</h1>
+	<p>The Uppercase of the string that you had entered is:</p>
+	<pre>{{html .}}</pre>
+</body>
+</html>
+`
