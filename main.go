@@ -47,7 +47,7 @@ func upper(w http.ResponseWriter, r *http.Request) {
 
 	var userInfo UserInfo
 	userInfo.Ip = strUpper
-	hostnames, _ := net.LookupAddr(strUpper)
+	hostnames, _ := net.LookupHost(strUpper)
 
 	if len(hostnames) >= 1 {
 		userInfo.Hostname = hostnames[0]
