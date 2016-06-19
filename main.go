@@ -42,13 +42,11 @@ var upperTemplate = template.Must(template.New("upper").Parse(upperTemplateHTML)
 func upper(w http.ResponseWriter, r *http.Request) {
 
 	strEntered := r.RemoteAddr
-	strUpper, _, _ := net.SplitHostPort(strEntered)
-	// 	ipAddr := strings.Split(strEntered, ":")
-	// 	strUpper := strings.ToUpper(ipAddr[0])
+	ipAddr, _, _ := net.SplitHostPort(strEntered)
 
 	var userInfo UserInfo
-	userInfo.Ip = strUpper
-	hostnames, _ := net.LookupAddr(strUpper)
+	userInfo.Ip = ipAddr
+	hostnames, _ := net.LookupAddr(ipAddr)
 
 	if len(hostnames) >= 1 {
 		userInfo.Hostname = strings.TrimRight(hostnames[0], ".")
