@@ -128,7 +128,12 @@ func root(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	templates.ExecuteTemplate(w, "layout", userInfo)
+	fmt.Println(userInfo)
+	err = templates.ExecuteTemplate(w, "layout", userInfo)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 
 }
 
