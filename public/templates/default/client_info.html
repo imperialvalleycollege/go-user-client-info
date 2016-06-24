@@ -1,0 +1,14 @@
+{{define "title"}}Client Info Page{{end}}
+
+{{define "body"}}
+
+<article>
+    <header>
+      <h1>Client Information</h1>
+      <p>The IP address and Host:</p>
+      <pre>{{html .IP}}</pre>
+      <pre>{{html .Hostname}}</pre>
+    </header>
+</article>
+
+{{end}}

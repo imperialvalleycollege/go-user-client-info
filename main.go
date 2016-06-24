@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"path"
 	"regexp"
 	"strconv"
 	"strings"
@@ -20,9 +21,9 @@ func main() {
 
 	// Configuration Options Start:
 	var (
-		config        string
-		favicon_theme string
-		port          int
+		config       string
+		faviconTheme string
+		port         int
 	)
 
 	// Forces the config.conf to be processed:
@@ -36,15 +37,15 @@ func main() {
 	}
 
 	flag.StringVar(&config, "config", "", "Path to your config.conf file.")
-	flag.StringVar(&favicon_theme, "favicon_theme", "circle-green", "Name of the folder to use for loading the favicons.")
+	flag.StringVar(&faviconTheme, "favicon_theme", "circle-green", "Name of the folder to use for loading the favicons.")
 	flag.IntVar(&port, "port", 3000, "This is the port the HTTP server will use when started.")
 	flag.Parse()
 
 	// Configuration Options Finish:
 
-	http.Handle("/assets/", http.StripPrefix("/public/", http.FileServer(http.Dir("/public/assets/"))))
+	http.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir("public/assets"))))
 
-	chttp.Handle("/", http.FileServer(http.Dir("public/assets/img/"+favicon_theme)))
+	chttp.Handle("/", http.FileServer(http.Dir("public/assets/img/"+faviconTheme)))
 	// 	fs := http.FileServer(http.Dir("public"))
 	// 	http.Handle("/public/", http.StripPrefix("/public/", fs))
 	http.HandleFunc("/", root)
@@ -73,7 +74,7 @@ func NotPassedConfig(args []string) bool {
 
 // Route functions.
 func root(w http.ResponseWriter, r *http.Request) {
-
+	fmt.Println("Reached the root function")
 	regex := regexp.MustCompile("/([^/]*\\.[^/]*)$")
 	matches := regex.FindStringSubmatch(r.URL.Path)
 
@@ -94,10 +95,41 @@ func root(w http.ResponseWriter, r *http.Request) {
 		userInfo.Hostname = strings.TrimRight(hostnames[0], ".")
 	}
 
-	err := rootTemplate.Execute(w, userInfo)
+	// err := rootTemplate.Execute(w, userInfo)
+	// if err != nil {
+	// 	http.Error(w, err.Error(), http.StatusInternalServerError)
+	// }
+
+	layoutPartial := path.Join("public/templates/default", "index.html")
+	clientInfoPartial := path.Join("public/templates/default", "client_info.html")
+
+	// Return a 404 if the template doesn't exist
+	info, err := os.Stat(clientInfoPartial)
+
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		if os.IsNotExist(err) {
+			fmt.Println("Reached this error")
+			http.NotFound(w, r)
+			return
+		}
 	}
+
+	// Return a 404 if the request is for a directory
+	if info.IsDir() {
+		fmt.Println("Reached that error")
+		http.NotFound(w, r)
+		return
+	}
+
+	templates, err := template.ParseFiles(layoutPartial, clientInfoPartial)
+	if err != nil {
+		fmt.Println(err)
+		http.Error(w, "500 Internal Server Error", 500)
+		return
+	}
+
+	templates.ExecuteTemplate(w, "layout", userInfo)
+
 }
 
 func tech(w http.ResponseWriter, r *http.Request) {
