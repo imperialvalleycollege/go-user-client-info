@@ -17,14 +17,16 @@ import (
 
 var chttp = http.NewServeMux()
 
+var (
+	config       string
+	siteTitle    string
+	faviconTheme string
+	port         int
+)
+
 func main() {
 
 	// Configuration Options Start:
-	var (
-		config       string
-		faviconTheme string
-		port         int
-	)
 
 	// Forces the config.conf to be processed:
 	// If the parameter is not passed in from the CLI
@@ -37,6 +39,7 @@ func main() {
 	}
 
 	flag.StringVar(&config, "config", "", "Path to your config.conf file.")
+	flag.StringVar(&siteTitle, "site_title", "User Client Information Application", "Name of the folder to use for loading the favicons.")
 	flag.StringVar(&faviconTheme, "favicon_theme", "circle-green", "Name of the folder to use for loading the favicons.")
 	flag.IntVar(&port, "port", 3000, "This is the port the HTTP server will use when started.")
 	flag.Parse()
@@ -128,8 +131,16 @@ func root(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	data := struct {
+		UserInfo  *UserInfo
+		SiteTitle string
+	}{
+		&userInfo,
+		siteTitle,
+	}
+
 	fmt.Println(userInfo)
-	err = templates.ExecuteTemplate(w, "layout", userInfo)
+	err = templates.ExecuteTemplate(w, "layout", data)
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
