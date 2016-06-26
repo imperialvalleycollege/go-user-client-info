@@ -19,10 +19,11 @@ import (
 var chttp = http.NewServeMux()
 
 var (
-	config       string
-	siteTitle    string
-	faviconTheme string
-	port         int
+	config         string
+	siteTitle      string
+	faviconTheme   string
+	port           int
+	showExternalIP bool
 )
 
 func main() {
@@ -43,6 +44,7 @@ func main() {
 	flag.StringVar(&siteTitle, "site_title", "User Client Information Application", "Name of the folder to use for loading the favicons.")
 	flag.StringVar(&faviconTheme, "favicon_theme", "circle-green", "Name of the folder to use for loading the favicons.")
 	flag.IntVar(&port, "port", 3000, "This is the port the HTTP server will use when started.")
+	flag.BoolVar(&showExternalIP, "show_external_ip", true, "Toggle the option to display the external IP address.")
 	flag.Parse()
 
 	// Configuration Options Finish:
@@ -103,7 +105,9 @@ func root(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		fmt.Println("Couldn't get my IP address:", err)
 	} else {
-		userInfo.ExternalIP = ip
+		if showExternalIP {
+			userInfo.ExternalIP = ip
+		}
 	}
 
 	// err := rootTemplate.Execute(w, userInfo)
