@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/namsral/flag"
+	"github.com/rdegges/go-ipify"
 )
 
 var chttp = http.NewServeMux()
@@ -98,6 +99,13 @@ func root(w http.ResponseWriter, r *http.Request) {
 		userInfo.Hostname = strings.TrimRight(hostnames[0], ".")
 	}
 
+	ip, err := ipify.GetIp()
+	if err != nil {
+		fmt.Println("Couldn't get my IP address:", err)
+	} else {
+		userInfo.ExternalIP = ip
+	}
+
 	// err := rootTemplate.Execute(w, userInfo)
 	// if err != nil {
 	// 	http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -154,8 +162,9 @@ func tech(w http.ResponseWriter, r *http.Request) {
 
 // UserInfo holds the data that will be displayed onto the page.
 type UserInfo struct {
-	IP       string
-	Hostname string
+	IP         string
+	Hostname   string
+	ExternalIP string
 }
 
 // Templates.
