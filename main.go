@@ -115,8 +115,8 @@ func root(w http.ResponseWriter, r *http.Request) {
 	// 	http.Error(w, err.Error(), http.StatusInternalServerError)
 	// }
 
-	layoutPartial := path.Join("public/templates/default", "index.html")
-	clientInfoPartial := path.Join("public/templates/default", "client_info.html")
+	layoutPartial := path.Join("public/templates/default", "mincss.html")
+	clientInfoPartial := path.Join("public/templates/default", "mincss_client_info.html")
 
 	// Return a 404 if the template doesn't exist
 	info, err := os.Stat(clientInfoPartial)

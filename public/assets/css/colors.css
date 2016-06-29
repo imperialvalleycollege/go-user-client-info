@@ -1,0 +1,18 @@
+.nav a {
+    color: #FFF
+}
+
+.nav.blue, .nav.blue .current, .nav.blue a:hover {
+  background-color: #4285f4
+}
+
+.nav.gold, .nav.gold .current, .nav.gold a:hover {
+  background-color: #fbbc05
+}
+.nav.green, .nav.green .current, .nav.green a:hover {
+  background-color: #34a853
+}
+
+.nav.red, .nav.red .current, .nav.red a:hover {
+  background-color: #ea4335
+}
