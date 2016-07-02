@@ -41,7 +41,7 @@ func main() {
 	}
 
 	flag.StringVar(&config, "config", "", "Path to your config.conf file.")
-	flag.StringVar(&siteTitle, "site_title", "User Client Information Application", "Name of the folder to use for loading the favicons.")
+	flag.StringVar(&siteTitle, "site_title", "User Client Information Application", "The primary title for the application.")
 	flag.StringVar(&faviconTheme, "favicon_theme", "circle-green", "Name of the folder to use for loading the favicons.")
 	flag.IntVar(&port, "port", 3000, "This is the port the HTTP server will use when started.")
 	flag.BoolVar(&showExternalIP, "show_external_ip", true, "Toggle the option to display the external IP address.")
@@ -81,81 +81,100 @@ func NotPassedConfig(args []string) bool {
 // Route functions.
 func root(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Reached the root function")
-	regex := regexp.MustCompile("/([^/]*\\.[^/]*)$")
+	fmt.Println(r.URL.Path)
+	regex := regexp.MustCompile("/([^/]*[^/]*)$")
 	matches := regex.FindStringSubmatch(r.URL.Path)
 
 	fmt.Println(matches)
 
-	if len(matches) > 0 {
-		chttp.ServeHTTP(w, r)
-	}
+	if r.URL.Path != "/" && len(matches) > 0 {
+		fmt.Println("Hitting multiplexer...")
 
-	strEntered := r.RemoteAddr
-	ipAddr, _, _ := net.SplitHostPort(strEntered)
+		// First check to see if the provided URL Path
+		// matches the name of an actual file in the public
+		// directory:
+		if info, err := os.Stat("public" + r.URL.Path); err == nil {
 
-	var userInfo UserInfo
-	userInfo.IP = ipAddr
-	hostnames, _ := net.LookupAddr(ipAddr)
-
-	if len(hostnames) >= 1 {
-		userInfo.Hostname = strings.TrimRight(hostnames[0], ".")
-	}
-
-	ip, err := ipify.GetIp()
-	if err != nil {
-		fmt.Println("Couldn't get my IP address:", err)
-	} else {
-		if showExternalIP {
-			userInfo.ExternalIP = ip
+			if info.IsDir() {
+				fmt.Println("Reached that error")
+				http.NotFound(w, r)
+				return
+			}
+			http.ServeFile(w, r, "public"+r.URL.Path)
+		} else if matches[0] == r.URL.Path {
+			chttp.ServeHTTP(w, r)
+		} else {
+			http.NotFound(w, r)
 		}
-	}
 
-	// err := rootTemplate.Execute(w, userInfo)
-	// if err != nil {
-	// 	http.Error(w, err.Error(), http.StatusInternalServerError)
-	// }
+	} else {
 
-	layoutPartial := path.Join("public/templates/default", "mincss.html")
-	clientInfoPartial := path.Join("public/templates/default", "mincss_client_info.html")
+		// Collecting our data variables:
 
-	// Return a 404 if the template doesn't exist
-	info, err := os.Stat(clientInfoPartial)
+		strEntered := r.RemoteAddr
+		ipAddr, _, _ := net.SplitHostPort(strEntered)
 
-	if err != nil {
-		if os.IsNotExist(err) {
-			fmt.Println("Reached this error")
+		var userInfo UserInfo
+		userInfo.IP = ipAddr
+		hostnames, _ := net.LookupAddr(ipAddr)
+
+		if len(hostnames) >= 1 {
+			userInfo.Hostname = strings.TrimRight(hostnames[0], ".")
+		}
+
+		ip, err := ipify.GetIp()
+		if err != nil {
+			fmt.Println("Couldn't get my IP address:", err)
+		} else {
+			if showExternalIP {
+				userInfo.ExternalIP = ip
+			}
+		}
+
+		// Setup the Layout:
+
+		layoutPartial := path.Join("public/templates/default", "mincss.html")
+		clientInfoPartial := path.Join("public/templates/default", "mincss_client_info.html")
+
+		// Return a 404 if the template doesn't exist
+		info, err := os.Stat(clientInfoPartial)
+
+		if err != nil {
+			if os.IsNotExist(err) {
+				fmt.Println("Reached this error")
+				http.NotFound(w, r)
+				return
+			}
+		}
+
+		// Return a 404 if the request is for a directory
+		if info.IsDir() {
+			fmt.Println("Reached that error")
 			http.NotFound(w, r)
 			return
 		}
-	}
 
-	// Return a 404 if the request is for a directory
-	if info.IsDir() {
-		fmt.Println("Reached that error")
-		http.NotFound(w, r)
-		return
-	}
+		templates, err := template.ParseFiles(layoutPartial, clientInfoPartial)
+		if err != nil {
+			fmt.Println(err)
+			http.Error(w, "500 Internal Server Error", 500)
+			return
+		}
 
-	templates, err := template.ParseFiles(layoutPartial, clientInfoPartial)
-	if err != nil {
-		fmt.Println(err)
-		http.Error(w, "500 Internal Server Error", 500)
-		return
-	}
+		data := struct {
+			UserInfo  *UserInfo
+			SiteTitle string
+		}{
+			&userInfo,
+			siteTitle,
+		}
 
-	data := struct {
-		UserInfo  *UserInfo
-		SiteTitle string
-	}{
-		&userInfo,
-		siteTitle,
-	}
+		fmt.Println(userInfo)
+		err = templates.ExecuteTemplate(w, "layout", data)
 
-	fmt.Println(userInfo)
-	err = templates.ExecuteTemplate(w, "layout", data)
-
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 	}
 
 }
@@ -170,41 +189,3 @@ type UserInfo struct {
 	Hostname   string
 	ExternalIP string
 }
-
-// Templates.
-var rootTemplate = template.Must(template.New("root").Parse(rootTemplateHTML))
-
-// Page templates.
-const rootTemplateHTML = `
-<!DOCTYPE html>
-<html>
-<head>
-	<meta charset="utf-8">
-	<link rel="stylesheet" href="css/upper.css">
-	<link rel="apple-touch-icon" sizes="57x57" href="/apple-icon-57x57.png">
-	<link rel="apple-touch-icon" sizes="60x60" href="/apple-icon-60x60.png">
-	<link rel="apple-touch-icon" sizes="72x72" href="/apple-icon-72x72.png">
-	<link rel="apple-touch-icon" sizes="76x76" href="/apple-icon-76x76.png">
-	<link rel="apple-touch-icon" sizes="114x114" href="/apple-icon-114x114.png">
-	<link rel="apple-touch-icon" sizes="120x120" href="/apple-icon-120x120.png">
-	<link rel="apple-touch-icon" sizes="144x144" href="/apple-icon-144x144.png">
-	<link rel="apple-touch-icon" sizes="152x152" href="/apple-icon-152x152.png">
-	<link rel="apple-touch-icon" sizes="180x180" href="/apple-icon-180x180.png">
-	<link rel="icon" type="image/png" sizes="192x192"  href="/android-icon-192x192.png">
-	<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
-	<link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png">
-	<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
-	<link rel="manifest" href="/manifest.json">
-	<meta name="msapplication-TileColor" content="#ffffff">
-	<meta name="msapplication-TileImage" content="/ms-icon-144x144.png">
-	<meta name="theme-color" content="#ffffff">
-	<title>User Client Information</title>
-</head>
-<body>
-	<h1>Client Information</h1>
-	<p>The IP address and Host:</p>
-	<pre>{{html .IP}}</pre>
-  <pre>{{html .Hostname}}</pre>
-</body>
-</html>
-`
