@@ -24,6 +24,9 @@ var (
 	faviconTheme   string
 	port           int
 	showExternalIP bool
+
+	UserInfoIDs []int
+	UserInfoMap map[int]UserInfo
 )
 
 func main() {
@@ -48,6 +51,11 @@ func main() {
 	flag.Parse()
 
 	// Configuration Options Finish:
+
+	// Initialize UserInfoMap and UserInfoIDs
+
+	UserInfoIDs = make([]int, 0)
+	UserInfoMap = make(map[int]UserInfo)
 
 	http.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir("public/assets"))))
 
@@ -76,6 +84,14 @@ func NotPassedConfig(args []string) bool {
 	}
 
 	return true
+}
+
+// Add UserInfo to memory.
+
+func insertUserInfo(user UserInfo) {
+	index := len(UserInfoIDs)
+	UserInfoIDs = append(UserInfoIDs, index)
+	UserInfoMap[index] = user
 }
 
 // Route functions.
@@ -130,6 +146,8 @@ func root(w http.ResponseWriter, r *http.Request) {
 				userInfo.ExternalIP = ip
 			}
 		}
+
+		insertUserInfo(userInfo)
 
 		// Setup the Layout:
 
