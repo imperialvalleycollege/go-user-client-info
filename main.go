@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"html/template"
 	"log"
@@ -57,11 +58,16 @@ func main() {
 	UserInfoIDs = make([]int, 0)
 	UserInfoMap = make(map[int]UserInfo)
 
-	http.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir("public/assets"))))
+	//http.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir("public/assets"))))
 
+	// This approach works better than using http.FileServer currently:
+	http.HandleFunc("/assets/css/", serveResource)
+	http.HandleFunc("/assets/img/", serveResource)
+	http.HandleFunc("/assets/js/", serveResource)
+
+	// Need to use a mux so we can have two handlers for the root path:
 	chttp.Handle("/", http.FileServer(http.Dir("public/assets/img/"+faviconTheme)))
-	// 	fs := http.FileServer(http.Dir("public"))
-	// 	http.Handle("/public/", http.StripPrefix("/public/", fs))
+
 	http.HandleFunc("/", root)
 	http.HandleFunc("/tech", tech)
 
@@ -84,6 +90,38 @@ func NotPassedConfig(args []string) bool {
 	}
 
 	return true
+}
+
+func serveResource(w http.ResponseWriter, req *http.Request) {
+    path := "public" + req.URL.Path
+    var contentType string
+    if strings.HasSuffix(path, ".css") {
+        contentType = "text/css"
+    } else if strings.HasSuffix(path, ".jpg") {
+        contentType = "image/jpeg"
+    } else if strings.HasSuffix(path, ".jpeg") {
+        contentType = "image/jpeg"
+    } else if strings.HasSuffix(path, ".gif") {
+        contentType = "image/gif"
+    } else if strings.HasSuffix(path, ".png") {
+        contentType = "image/png"
+    } else if strings.HasSuffix(path, ".js") {
+        contentType = "application/javascript"
+    } else {
+        contentType = "text/plain"
+    }
+
+    f, err := os.Open(path)
+
+    if err == nil {
+        defer f.Close()
+        w.Header().Add("Content-Type", contentType)
+
+        br := bufio.NewReader(f)
+        br.WriteTo(w)
+    } else {
+        w.WriteHeader(404)
+    }
 }
 
 // Add UserInfo to memory.
