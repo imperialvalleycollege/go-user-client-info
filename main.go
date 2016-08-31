@@ -14,8 +14,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/patrickmn/go-cache"
+	"github.com/mssola/user_agent"
 	"github.com/namsral/flag"
+	"github.com/patrickmn/go-cache"
 	"github.com/rdegges/go-ipify"
 )
 
@@ -23,14 +24,12 @@ var chttp = http.NewServeMux()
 var c = cache.New(60*time.Minute, 30*time.Second)
 
 var (
+	cacheLimit     int
 	config         string
 	siteTitle      string
 	faviconTheme   string
 	port           int
 	showExternalIP bool
-
-	//userInfoIDs []int
-	//userInfoMap map[int]UserInfo
 )
 
 func main() {
@@ -47,32 +46,27 @@ func main() {
 		}
 	}
 
+	flag.IntVar(&cacheLimit, "cache_limit", 100, "This is the limit for the number of recent visits that will be maintained in memory.")
 	flag.StringVar(&config, "config", "", "Path to your config.conf file.")
 	flag.StringVar(&siteTitle, "site_title", "User Client Information Application", "The primary title for the application.")
-	flag.StringVar(&faviconTheme, "favicon_theme", "circle-green", "Name of the folder to use for loading the favicons.")
+	flag.StringVar(&faviconTheme, "favicon_theme", "circle-blue", "Name of the folder to use for loading the favicons.")
 	flag.IntVar(&port, "port", 3000, "This is the port the HTTP server will use when started.")
 	flag.BoolVar(&showExternalIP, "show_external_ip", true, "Toggle the option to display the external IP address.")
 	flag.Parse()
 
 	// Configuration Options Finish:
 
-	// Initialize UserInfoMap and UserInfoIDs
-
-	//userInfoIDs = make([]int, 0)
-	//userInfoMap = make(map[int]UserInfo)
-
-	//http.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir("public/assets"))))
-
 	// This approach works better than using http.FileServer currently:
 	http.HandleFunc("/assets/css/", serveResource)
 	http.HandleFunc("/assets/img/", serveResource)
 	http.HandleFunc("/assets/js/", serveResource)
+	//http.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir("public/assets"))))
 
 	// Need to use a mux so we can have two handlers for the root path:
 	chttp.Handle("/", http.FileServer(http.Dir("public/assets/img/"+faviconTheme)))
 
 	http.HandleFunc("/", root)
-	http.HandleFunc("/tech", tech)
+	http.HandleFunc("/visits", visits)
 
 	portString := ":" + strconv.Itoa(port)
 	fmt.Printf("Listening on port %d...\n", port)
@@ -95,67 +89,70 @@ func NotPassedConfig(args []string) bool {
 	return true
 }
 
+// Using this instead of the regular file server due to mimetype issues:
 func serveResource(w http.ResponseWriter, req *http.Request) {
-    path := "public" + req.URL.Path
-    var contentType string
-    if strings.HasSuffix(path, ".css") {
-        contentType = "text/css"
-    } else if strings.HasSuffix(path, ".jpg") {
-        contentType = "image/jpeg"
-    } else if strings.HasSuffix(path, ".jpeg") {
-        contentType = "image/jpeg"
-    } else if strings.HasSuffix(path, ".gif") {
-        contentType = "image/gif"
-    } else if strings.HasSuffix(path, ".png") {
-        contentType = "image/png"
-    } else if strings.HasSuffix(path, ".js") {
-        contentType = "application/javascript"
-    } else {
-        contentType = "text/plain"
-    }
+	path := "public" + req.URL.Path
+	var contentType string
+	if strings.HasSuffix(path, ".css") {
+		contentType = "text/css"
+	} else if strings.HasSuffix(path, ".jpg") {
+		contentType = "image/jpeg"
+	} else if strings.HasSuffix(path, ".jpeg") {
+		contentType = "image/jpeg"
+	} else if strings.HasSuffix(path, ".gif") {
+		contentType = "image/gif"
+	} else if strings.HasSuffix(path, ".png") {
+		contentType = "image/png"
+	} else if strings.HasSuffix(path, ".js") {
+		contentType = "application/javascript"
+	} else {
+		contentType = "text/plain"
+	}
 
-    f, err := os.Open(path)
+	f, err := os.Open(path)
 
-    if err == nil {
-        defer f.Close()
-        w.Header().Add("Content-Type", contentType)
+	if err == nil {
+		defer f.Close()
+		w.Header().Add("Content-Type", contentType)
 
-        br := bufio.NewReader(f)
-        br.WriteTo(w)
-    } else {
-        w.WriteHeader(404)
-    }
+		br := bufio.NewReader(f)
+		br.WriteTo(w)
+	} else {
+		w.WriteHeader(404)
+	}
 }
 
-// Add UserInfo to memory.
+// UserInfo holds the data that will be displayed onto the page.
+type UserInfo struct {
+	IP         string
+	Hostname   string
+	ExternalIP string
+	Browser    string
+}
 
+// Add UserInfo to in-memory cache.
 func insertUserInfo(user UserInfo) {
-	//index := len(userInfoIDs)
-	//userInfoIDs = append(userInfoIDs, index)
-	//userInfoMap[index] = user
+
+	if c.ItemCount() > cacheLimit {
+		c.Flush()
+	}
+
 	t := time.Now()
 	c.Set(t.Format(time.RFC3339Nano), user, cache.DefaultExpiration)
 }
 
 // Route functions.
 func root(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Reached the root function")
-	fmt.Println(r.URL.Path)
 	regex := regexp.MustCompile("/([^/]*[^/]*)$")
 	matches := regex.FindStringSubmatch(r.URL.Path)
 
-	fmt.Println(matches)
-
 	if r.URL.Path != "/" && len(matches) > 0 {
-		fmt.Println("Hitting multiplexer...")
-
 		// First check to see if the provided URL Path
 		// matches the name of an actual file in the public
 		// directory:
 		if info, err := os.Stat("public" + r.URL.Path); err == nil {
 
 			if info.IsDir() {
-				fmt.Println("Reached that error")
 				http.NotFound(w, r)
 				return
 			}
@@ -169,9 +166,20 @@ func root(w http.ResponseWriter, r *http.Request) {
 	} else {
 
 		// Collecting our data variables:
-
 		strEntered := r.RemoteAddr
 		ipAddr, _, _ := net.SplitHostPort(strEntered)
+
+		forwardedIPs := r.Header.Get("x-forwarded-for")
+		// Assuming format is as expected
+		ips := strings.Split(forwardedIPs, ", ")
+		if len(ips) >= 1 {
+			firstIP := ips[0]
+			if firstIP != "" && validIP4(firstIP) {
+				if ipAddr != firstIP {
+					ipAddr = firstIP
+				}
+			}
+		}
 
 		var userInfo UserInfo
 		userInfo.IP = ipAddr
@@ -190,19 +198,21 @@ func root(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
+		ua := user_agent.New(r.Header.Get("User-Agent"))
+		browserName, browserVersion := ua.Browser()
+		userInfo.Browser = browserName + " " + browserVersion
+
 		insertUserInfo(userInfo)
 
 		// Setup the Layout:
-
-		layoutPartial := path.Join("public/templates/default", "mincss.html")
-		clientInfoPartial := path.Join("public/templates/default", "mincss_client_info.html")
+		layoutPartial := path.Join("public/templates/default", "pure_landing.html")
+		clientInfoPartial := path.Join("public/templates/default", "pure_client_info.html")
 
 		// Return a 404 if the template doesn't exist
 		info, err := os.Stat(clientInfoPartial)
 
 		if err != nil {
 			if os.IsNotExist(err) {
-				fmt.Println("Reached this error")
 				http.NotFound(w, r)
 				return
 			}
@@ -210,12 +220,14 @@ func root(w http.ResponseWriter, r *http.Request) {
 
 		// Return a 404 if the request is for a directory
 		if info.IsDir() {
-			fmt.Println("Reached that error")
 			http.NotFound(w, r)
 			return
 		}
 
-		templates, err := template.ParseFiles(layoutPartial, clientInfoPartial)
+		templates := template.New("client_view")
+		templates.Funcs(funcMap)
+
+		templates, err = templates.ParseFiles(layoutPartial, clientInfoPartial)
 		if err != nil {
 			fmt.Println(err)
 			http.Error(w, "500 Internal Server Error", 500)
@@ -223,14 +235,17 @@ func root(w http.ResponseWriter, r *http.Request) {
 		}
 
 		data := struct {
-			Data  *UserInfo
-			SiteTitle string
+			Data           *UserInfo
+			Count          int
+			PageTitle      string
+			ShowExternalIP bool
 		}{
 			&userInfo,
+			c.ItemCount(),
 			siteTitle,
+			showExternalIP,
 		}
 
-		fmt.Println(userInfo)
 		err = templates.ExecuteTemplate(w, "layout", data)
 
 		if err != nil {
@@ -244,9 +259,7 @@ func dateFormat(layout string, d string) string {
 	t, _ := time.Parse(time.RFC3339Nano, d)
 	var formattedDate string
 
-
-			formattedDate = t.Format(layout)
-
+	formattedDate = t.Format(layout)
 
 	return formattedDate
 }
@@ -255,19 +268,18 @@ var funcMap = template.FuncMap{
 	"dateFormat": dateFormat,
 }
 
-func tech(w http.ResponseWriter, r *http.Request) {
+func visits(w http.ResponseWriter, r *http.Request) {
 	// The logic for outputting for our in-memory database (with recent request info) should go in here:
 	// Setup the Layout:
 
-	layoutPartial := path.Join("public/templates/default", "mincss.html")
-	clientInfoPartial := path.Join("public/templates/default", "mincss_tech_info.html")
+	layoutPartial := path.Join("public/templates/default", "pure_landing.html")
+	visitsInfoPartial := path.Join("public/templates/default", "pure_visits_info.html")
 
 	// Return a 404 if the template doesn't exist
-	info, err := os.Stat(clientInfoPartial)
+	info, err := os.Stat(visitsInfoPartial)
 
 	if err != nil {
 		if os.IsNotExist(err) {
-			fmt.Println("Reached this error")
 			http.NotFound(w, r)
 			return
 		}
@@ -275,7 +287,6 @@ func tech(w http.ResponseWriter, r *http.Request) {
 
 	// Return a 404 if the request is for a directory
 	if info.IsDir() {
-		fmt.Println("Reached that error")
 		http.NotFound(w, r)
 		return
 	}
@@ -283,32 +294,39 @@ func tech(w http.ResponseWriter, r *http.Request) {
 	templates := template.New("tech_view")
 	templates.Funcs(funcMap)
 
-	templates, err = templates.ParseFiles(layoutPartial, clientInfoPartial)
+	templates, err = templates.ParseFiles(layoutPartial, visitsInfoPartial)
 	if err != nil {
 		fmt.Println(err)
 		http.Error(w, "500 Internal Server Error", 500)
 		return
 	}
 
+	dataItems := c.Items()
 
 	data := struct {
-		Data map[string]cache.Item
-		SiteTitle string
+		Data           map[string]cache.Item
+		Count          int
+		PageTitle      string
+		ShowExternalIP bool
 	}{
-		c.Items(),
-		"Tech Information",
+		dataItems,
+		c.ItemCount(),
+		"Tech Information - " + siteTitle,
+		showExternalIP,
 	}
-	//fmt.Println(userInfo)
-	err = templates.ExecuteTemplate(w, "layout", data)
 
+	err = templates.ExecuteTemplate(w, "layout", data)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
 
-// UserInfo holds the data that will be displayed onto the page.
-type UserInfo struct {
-	IP         string
-	Hostname   string
-	ExternalIP string
+func validIP4(ipAddress string) bool {
+	ipAddress = strings.Trim(ipAddress, " ")
+
+	re, _ := regexp.Compile(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$`)
+	if re.MatchString(ipAddress) {
+		return true
+	}
+	return false
 }

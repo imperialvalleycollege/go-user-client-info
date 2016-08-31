@@ -1,0 +1,46 @@
+{{define "body"}}
+<div class="header">
+    <div class="home-menu pure-menu pure-menu-horizontal pure-menu-fixed">
+        <a class="pure-menu-heading" href="/"><img src="/favicon-96x96.png" class="pure-menu-heading-icon"> User Client Info</a>
+
+        <ul class="pure-menu-list">
+            <li class="pure-menu-item"><a href="/visits" class="pure-menu-link">Recent Visits ({{ .Count }})</a></li>
+        </ul>
+    </div>
+</div>
+
+<div class="splash-container">
+    <div class="splash">
+        <h1 class="splash-head">Your IP Address is:<br /> {{ .Data.IP }}</h1>
+        {{ if ne .Data.Hostname "" }}
+        <p class="splash-subhead">
+            Your Hostname is:<br />
+            {{ .Data.Hostname }}
+        </p>
+        {{end}}
+        {{ if ne .Data.ExternalIP "" }}
+        <p class="splash-subhead">
+            Your External IP is:<br />
+            {{ .Data.ExternalIP }}
+        </p>
+        {{end}}
+
+        {{ if ne .Data.Browser "" }}
+        <p class="splash-subhead">
+            Your Browser is:<br />
+            {{ .Data.Browser }}
+        </p>
+        {{end}}
+
+    </div>
+</div>
+
+<div class="content-wrapper">
+
+    <div class="footer l-box is-center">
+        Created using <a href="https://golang.org/">Go</a> @ <a href="http://www.imperial.edu/">Imperial Valley College</a>.
+    </div>
+
+</div>
+
+{{end}}
