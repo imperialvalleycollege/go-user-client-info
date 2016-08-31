@@ -1,0 +1,31 @@
+{{define "title"}}{{end}}
+
+{{define "body"}}
+
+<div class="hero">
+      <h1>Tech Information</h1>
+
+      <table class="pure-table">
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Hostname</th>
+            <th>IP Address</th>
+            <th>External IP Address</th>
+          </tr>
+        </thead>
+        <tbody>
+      {{ range $key, $value := . }}
+          <tr>
+            <td>{{ $key | dateFormat "2006-01-02 15:04:05" }}</td>
+            <td>{{ $value.Object.Hostname }}</td>
+            <td>{{ $value.Object.IP }}</td>
+            <td>{{ $value.Object.ExternalIP }}</td>
+          </tr>
+      {{ end}}
+        </tbody>
+      </table>
+
+</div>
+
+{{end}}

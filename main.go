@@ -12,12 +12,15 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
+	"github.com/patrickmn/go-cache"
 	"github.com/namsral/flag"
 	"github.com/rdegges/go-ipify"
 )
 
 var chttp = http.NewServeMux()
+var c = cache.New(60*time.Minute, 30*time.Second)
 
 var (
 	config         string
@@ -26,8 +29,8 @@ var (
 	port           int
 	showExternalIP bool
 
-	UserInfoIDs []int
-	UserInfoMap map[int]UserInfo
+	//userInfoIDs []int
+	//userInfoMap map[int]UserInfo
 )
 
 func main() {
@@ -55,8 +58,8 @@ func main() {
 
 	// Initialize UserInfoMap and UserInfoIDs
 
-	UserInfoIDs = make([]int, 0)
-	UserInfoMap = make(map[int]UserInfo)
+	//userInfoIDs = make([]int, 0)
+	//userInfoMap = make(map[int]UserInfo)
 
 	//http.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir("public/assets"))))
 
@@ -127,9 +130,11 @@ func serveResource(w http.ResponseWriter, req *http.Request) {
 // Add UserInfo to memory.
 
 func insertUserInfo(user UserInfo) {
-	index := len(UserInfoIDs)
-	UserInfoIDs = append(UserInfoIDs, index)
-	UserInfoMap[index] = user
+	//index := len(userInfoIDs)
+	//userInfoIDs = append(userInfoIDs, index)
+	//userInfoMap[index] = user
+	t := time.Now()
+	c.Set(t.Format(time.RFC3339Nano), user, cache.DefaultExpiration)
 }
 
 // Route functions.
@@ -218,7 +223,7 @@ func root(w http.ResponseWriter, r *http.Request) {
 		}
 
 		data := struct {
-			UserInfo  *UserInfo
+			Data  *UserInfo
 			SiteTitle string
 		}{
 			&userInfo,
@@ -235,8 +240,70 @@ func root(w http.ResponseWriter, r *http.Request) {
 
 }
 
+func dateFormat(layout string, d string) string {
+	t, _ := time.Parse(time.RFC3339Nano, d)
+	var formattedDate string
+
+
+			formattedDate = t.Format(layout)
+
+
+	return formattedDate
+}
+
+var funcMap = template.FuncMap{
+	"dateFormat": dateFormat,
+}
+
 func tech(w http.ResponseWriter, r *http.Request) {
 	// The logic for outputting for our in-memory database (with recent request info) should go in here:
+	// Setup the Layout:
+
+	layoutPartial := path.Join("public/templates/default", "mincss.html")
+	clientInfoPartial := path.Join("public/templates/default", "mincss_tech_info.html")
+
+	// Return a 404 if the template doesn't exist
+	info, err := os.Stat(clientInfoPartial)
+
+	if err != nil {
+		if os.IsNotExist(err) {
+			fmt.Println("Reached this error")
+			http.NotFound(w, r)
+			return
+		}
+	}
+
+	// Return a 404 if the request is for a directory
+	if info.IsDir() {
+		fmt.Println("Reached that error")
+		http.NotFound(w, r)
+		return
+	}
+
+	templates := template.New("tech_view")
+	templates.Funcs(funcMap)
+
+	templates, err = templates.ParseFiles(layoutPartial, clientInfoPartial)
+	if err != nil {
+		fmt.Println(err)
+		http.Error(w, "500 Internal Server Error", 500)
+		return
+	}
+
+
+	data := struct {
+		Data map[string]cache.Item
+		SiteTitle string
+	}{
+		c.Items(),
+		"Tech Information",
+	}
+	//fmt.Println(userInfo)
+	err = templates.ExecuteTemplate(w, "layout", data)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }
 
 // UserInfo holds the data that will be displayed onto the page.
