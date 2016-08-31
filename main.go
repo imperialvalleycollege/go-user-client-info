@@ -128,6 +128,7 @@ type UserInfo struct {
 	Hostname   string
 	ExternalIP string
 	Browser    string
+	Theme      string
 }
 
 // Add UserInfo to in-memory cache.
@@ -239,11 +240,13 @@ func root(w http.ResponseWriter, r *http.Request) {
 			Count          int
 			PageTitle      string
 			ShowExternalIP bool
+			Theme          string
 		}{
 			&userInfo,
 			c.ItemCount(),
 			siteTitle,
 			showExternalIP,
+			faviconTheme,
 		}
 
 		err = templates.ExecuteTemplate(w, "layout", data)
@@ -308,11 +311,13 @@ func visits(w http.ResponseWriter, r *http.Request) {
 		Count          int
 		PageTitle      string
 		ShowExternalIP bool
+		Theme          string
 	}{
 		dataItems,
 		c.ItemCount(),
 		"Tech Information - " + siteTitle,
 		showExternalIP,
+		faviconTheme,
 	}
 
 	err = templates.ExecuteTemplate(w, "layout", data)

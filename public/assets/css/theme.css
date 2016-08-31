@@ -24,6 +24,27 @@ label {
     color: #34495e;
 }
 
+
+.splash-container.circle-blue,
+.splash-container.rectangle-blue {
+  background-color: #4285f4
+}
+
+.splash-container.circle-gold,
+.splash-container.rectangle-gold {
+  background-color: #fbbc05
+}
+
+.splash-container.circle-green,
+.splash-container.rectangle-green {
+  background-color: #34a853
+}
+
+.splash-container.circle-red,
+.splash-container.rectangle-red {
+  background-color: #ea4335
+}
+
 .pure-menu-heading-icon {
   height: 25px;
   vertical-align: bottom;
