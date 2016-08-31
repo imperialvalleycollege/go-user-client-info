@@ -24,6 +24,9 @@ label {
     color: #34495e;
 }
 
+.sortable thead {
+  cursor: pointer;
+}
 
 .splash-container.circle-blue,
 .splash-container.rectangle-blue {
