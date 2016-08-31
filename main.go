@@ -27,6 +27,7 @@ var (
 	cacheLimit     int
 	config         string
 	siteTitle      string
+	templateFolder string
 	faviconTheme   string
 	port           int
 	showExternalIP bool
@@ -49,6 +50,7 @@ func main() {
 	flag.IntVar(&cacheLimit, "cache_limit", 100, "This is the limit for the number of recent visits that will be maintained in memory.")
 	flag.StringVar(&config, "config", "", "Path to your config.conf file.")
 	flag.StringVar(&siteTitle, "site_title", "User Client Information Application", "The primary title for the application.")
+	flag.StringVar(&templateFolder, "template_folder", "default", "Name of the folder to use for loading the template files.")
 	flag.StringVar(&faviconTheme, "favicon_theme", "circle-blue", "Name of the folder to use for loading the favicons.")
 	flag.IntVar(&port, "port", 3000, "This is the port the HTTP server will use when started.")
 	flag.BoolVar(&showExternalIP, "show_external_ip", true, "Toggle the option to display the external IP address.")
@@ -206,8 +208,8 @@ func root(w http.ResponseWriter, r *http.Request) {
 		insertUserInfo(userInfo)
 
 		// Setup the Layout:
-		layoutPartial := path.Join("public/templates/default", "pure_landing.html")
-		clientInfoPartial := path.Join("public/templates/default", "pure_client_info.html")
+		layoutPartial := path.Join("public/templates/"+templateFolder, "index.html")
+		clientInfoPartial := path.Join("public/templates/"+templateFolder, "client.html")
 
 		// Return a 404 if the template doesn't exist
 		info, err := os.Stat(clientInfoPartial)
@@ -275,8 +277,8 @@ func visits(w http.ResponseWriter, r *http.Request) {
 	// The logic for outputting for our in-memory database (with recent request info) should go in here:
 	// Setup the Layout:
 
-	layoutPartial := path.Join("public/templates/default", "pure_landing.html")
-	visitsInfoPartial := path.Join("public/templates/default", "pure_visits_info.html")
+	layoutPartial := path.Join("public/templates/"+templateFolder, "index.html")
+	visitsInfoPartial := path.Join("public/templates/"+templateFolder, "visits.html")
 
 	// Return a 404 if the template doesn't exist
 	info, err := os.Stat(visitsInfoPartial)
