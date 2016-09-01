@@ -17,11 +17,11 @@ import (
 	"github.com/mssola/user_agent"
 	"github.com/namsral/flag"
 	"github.com/patrickmn/go-cache"
-	"github.com/rdegges/go-ipify"
 )
 
 var chttp = http.NewServeMux()
 var c = cache.New(60*time.Minute, 30*time.Second)
+var externalIPs = cache.New(60*time.Minute, 30*time.Second)
 
 var (
 	cacheLimit     int
@@ -69,6 +69,7 @@ func main() {
 
 	http.HandleFunc("/", root)
 	http.HandleFunc("/visits", visits)
+	http.HandleFunc("/external", external)
 
 	portString := ":" + strconv.Itoa(port)
 	fmt.Printf("Listening on port %d...\n", port)
@@ -126,11 +127,11 @@ func serveResource(w http.ResponseWriter, req *http.Request) {
 
 // UserInfo holds the data that will be displayed onto the page.
 type UserInfo struct {
-	IP         string
-	Hostname   string
-	ExternalIP string
-	Browser    string
-	Theme      string
+	Timestamp string
+	IP        string
+	Hostname  string
+	Browser   string
+	Theme     string
 }
 
 // Add UserInfo to in-memory cache.
@@ -140,8 +141,18 @@ func insertUserInfo(user UserInfo) {
 		c.Flush()
 	}
 
-	t := time.Now()
-	c.Set(t.Format(time.RFC3339Nano), user, cache.DefaultExpiration)
+	c.Set(user.Timestamp, user, cache.DefaultExpiration)
+}
+
+func insertExternalIP(timestamp string, ip string) {
+
+	if externalIPs.ItemCount() > cacheLimit {
+		externalIPs.Flush()
+	}
+
+	if _, found := c.Get(timestamp); found == true {
+		externalIPs.Set(timestamp, ip, cache.DefaultExpiration)
+	}
 }
 
 // Route functions.
@@ -192,18 +203,12 @@ func root(w http.ResponseWriter, r *http.Request) {
 			userInfo.Hostname = strings.TrimRight(hostnames[0], ".")
 		}
 
-		ip, err := ipify.GetIp()
-		if err != nil {
-			fmt.Println("Couldn't get my IP address:", err)
-		} else {
-			if showExternalIP {
-				userInfo.ExternalIP = ip
-			}
-		}
-
 		ua := user_agent.New(r.Header.Get("User-Agent"))
 		browserName, browserVersion := ua.Browser()
 		userInfo.Browser = browserName + " " + browserVersion
+
+		t := time.Now()
+		userInfo.Timestamp = t.Format(time.RFC3339Nano)
 
 		insertUserInfo(userInfo)
 
@@ -311,12 +316,14 @@ func visits(w http.ResponseWriter, r *http.Request) {
 	data := struct {
 		Data           map[string]cache.Item
 		Count          int
+		ExternalIPs    map[string]cache.Item
 		PageTitle      string
 		ShowExternalIP bool
 		Theme          string
 	}{
 		dataItems,
 		c.ItemCount(),
+		externalIPs.Items(),
 		"Tech Information - " + siteTitle,
 		showExternalIP,
 		faviconTheme,
@@ -326,6 +333,13 @@ func visits(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
+}
+
+func external(w http.ResponseWriter, r *http.Request) {
+	timestamp := r.URL.Query().Get("timestamp")
+	ip := r.URL.Query().Get("ip")
+
+	insertExternalIP(timestamp, ip)
 }
 
 func validIP4(ipAddress string) bool {

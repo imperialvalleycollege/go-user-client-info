@@ -18,10 +18,10 @@
             {{ .Data.Hostname }}
         </p>
         {{end}}
-        {{ if ne .Data.ExternalIP "" }}
+        {{ if .ShowExternalIP }}
         <p class="splash-subhead">
             Your External IP is:<br />
-            {{ .Data.ExternalIP }}
+            <span id="external_ip"></span>
         </p>
         {{end}}
 
@@ -42,5 +42,20 @@
     </div>
 
 </div>
+{{ if .ShowExternalIP }}
+<script type="application/javascript">
+  function getIP(json) {
+    var elem = document.getElementById("external_ip");
+    elem.innerHTML = json.ip;
+    var r = new XMLHttpRequest();
+    r.open("GET", "/external?"+"timestamp="+{{.Data.Timestamp}}+"&ip="+json.ip, true);
+    r.onreadystatechange = function () {
+      if (r.readyState != 4 || r.status != 200) return;
+    };
+    r.send(null);
+  }
+</script>
 
+<script type="application/javascript" src="https://api.ipify.org?format=jsonp&callback=getIP"></script>
+{{ end }}
 {{end}}

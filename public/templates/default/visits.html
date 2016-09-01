@@ -37,7 +37,7 @@
                       <td>{{ $value.Object.IP }}</td>
                       <td>{{ $value.Object.Hostname }}</td>
                       {{ if $showExternalIP }}
-                      <td>{{ $value.Object.ExternalIP }}</td>
+                      <td>{{ (index $.ExternalIPs $key).Object }}</td>
                       {{end}}
                       <td>{{ $value.Object.Browser }}</td>
                     </tr>
