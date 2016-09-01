@@ -3,9 +3,11 @@
     <div class="home-menu pure-menu pure-menu-horizontal pure-menu-fixed">
         <a class="pure-menu-heading" href="/"><img title="User Client Info Application Logo" src="/favicon-96x96.png" class="pure-menu-heading-icon"> User Client Info</a>
 
+        {{ if .ShowRecentVisitsLink }}
         <ul class="pure-menu-list">
             <li class="pure-menu-item"><a href="/visits" class="pure-menu-link">Recent Visits ({{ .Count }})</a></li>
         </ul>
+        {{ end }}
     </div>
 </div>
 

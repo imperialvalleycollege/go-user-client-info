@@ -20,17 +20,20 @@ import (
 )
 
 var chttp = http.NewServeMux()
-var c = cache.New(60*time.Minute, 30*time.Second)
-var externalIPs = cache.New(60*time.Minute, 30*time.Second)
+var c *cache.Cache
+var externalIPs *cache.Cache
 
 var (
-	cacheLimit     int
-	config         string
-	siteTitle      string
-	templateFolder string
-	faviconTheme   string
-	port           int
-	showExternalIP bool
+	cacheExpiration         int
+	cacheLimit              int
+	config                  string
+	siteTitle               string
+	templateFolder          string
+	faviconTheme            string
+	port                    int
+	showExternalIP          bool
+	showRecentVisitsLink    bool
+	disableRecentVisitsLink bool
 )
 
 func main() {
@@ -47,6 +50,7 @@ func main() {
 		}
 	}
 
+	flag.IntVar(&cacheExpiration, "cache_expiration", 60, "This is the total number of minutes items will remain in the cache.")
 	flag.IntVar(&cacheLimit, "cache_limit", 100, "This is the limit for the number of recent visits that will be maintained in memory.")
 	flag.StringVar(&config, "config", "", "Path to your config.conf file.")
 	flag.StringVar(&siteTitle, "site_title", "User Client Information Application", "The primary title for the application.")
@@ -54,7 +58,17 @@ func main() {
 	flag.StringVar(&faviconTheme, "favicon_theme", "circle-blue", "Name of the folder to use for loading the favicons.")
 	flag.IntVar(&port, "port", 3000, "This is the port the HTTP server will use when started.")
 	flag.BoolVar(&showExternalIP, "show_external_ip", true, "Toggle the option to display the external IP address.")
+	flag.BoolVar(&showRecentVisitsLink, "show_recent_visits_link", true, "Simply hides the /visits URL from the web interface if it's set to false (but it's still accessible directly).")
+	flag.BoolVar(&disableRecentVisitsLink, "disable_recent_visits_link", false, "Completely disables the /visits URL (no longer accessible).")
 	flag.Parse()
+
+	c = cache.New(time.Duration(cacheExpiration)*time.Minute, 30*time.Second)
+	externalIPs = cache.New(time.Duration(cacheExpiration)*time.Minute, 30*time.Second)
+
+	// manually switch the recent visits link flag to false if the page is completely disabled:
+	if disableRecentVisitsLink {
+		showRecentVisitsLink = false
+	}
 
 	// Configuration Options Finish:
 
@@ -243,16 +257,18 @@ func root(w http.ResponseWriter, r *http.Request) {
 		}
 
 		data := struct {
-			Data           *UserInfo
-			Count          int
-			PageTitle      string
-			ShowExternalIP bool
-			Theme          string
+			Data                 *UserInfo
+			Count                int
+			PageTitle            string
+			ShowExternalIP       bool
+			ShowRecentVisitsLink bool
+			Theme                string
 		}{
 			&userInfo,
 			c.ItemCount(),
 			siteTitle,
 			showExternalIP,
+			showRecentVisitsLink,
 			faviconTheme,
 		}
 
@@ -279,6 +295,11 @@ var funcMap = template.FuncMap{
 }
 
 func visits(w http.ResponseWriter, r *http.Request) {
+	if disableRecentVisitsLink {
+		fmt.Println("Disabled Visits Link")
+		http.NotFound(w, r)
+		return
+	}
 	// The logic for outputting for our in-memory database (with recent request info) should go in here:
 	// Setup the Layout:
 
