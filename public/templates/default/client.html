@@ -47,12 +47,17 @@
   function getIP(json) {
     var elem = document.getElementById("external_ip");
     elem.innerHTML = json.ip;
-    var r = new XMLHttpRequest();
-    r.open("GET", "/external?"+"timestamp="+{{.Data.Timestamp}}+"&ip="+json.ip, true);
-    r.onreadystatechange = function () {
-      if (r.readyState != 4 || r.status != 200) return;
-    };
-    r.send(null);
+
+    // Send the External IP address to the server using AJAX:
+    if (window.XMLHttpRequest)
+    {
+      var r = new XMLHttpRequest();
+      r.open("GET", "/external?"+"timestamp="+{{.Data.Timestamp}}+"&ip="+json.ip, true);
+      r.onreadystatechange = function () {
+        if (r.readyState != 4 || r.status != 200) return;
+      };
+      r.send(null);
+    }
   }
 </script>
 
