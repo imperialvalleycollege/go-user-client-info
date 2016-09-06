@@ -63,7 +63,7 @@ func main() {
 	flag.BoolVar(&showExternalIP, "show_external_ip", true, "Toggle the option to display the external IP address.")
 	flag.BoolVar(&showRecentVisitsLink, "show_recent_visits_link", true, "Simply hides the /visits URL from the web interface if it's set to false (but it's still accessible directly).")
 	flag.BoolVar(&disableRecentVisitsLink, "disable_recent_visits_link", false, "Completely disables the /visits URL (no longer accessible).")
-	flag.BoolVar(&useAsyncView, "use_async_view", true, "The /visits URL will use an asynchronous for loading data onto the page.")
+	flag.BoolVar(&useAsyncView, "use_async_view", true, "The /visits URL will use an asynchronous method for loading data onto the page.")
 	flag.Parse()
 
 	c = cache.New(time.Duration(cacheExpiration)*time.Minute, 30*time.Second)
