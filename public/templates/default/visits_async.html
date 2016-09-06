@@ -50,7 +50,8 @@
       <tr>
         <th v-for="key in columns"
           @click="sortBy(fields[$index])"
-          :class="{active: sortKey == fields[$index]}">
+          :class="{active: sortKey == fields[$index]}"
+            class="column-${fields[$index]}">
           ${key | capitalize}
           <span class="arrow"
             :class="sortOrders[fields[$index]] > 0 ? 'asc' : 'dsc'">

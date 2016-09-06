@@ -371,6 +371,26 @@ table.vue-grid th, table.vue-grid td {
   padding: 10px 20px;
 }
 
+table.vue-grid th.column-timestamp {
+  min-width: 150px;
+}
+
+table.vue-grid th.column-ip {
+  min-width: 150px;
+}
+
+table.vue-grid th.column-externalIP {
+  min-width: 150px;
+}
+
+table.vue-grid th.column-hostname {
+  min-width: 200px;
+}
+
+table.vue-grid th.column-browser {
+  min-width: 220px;
+}
+
 table.vue-grid th.active {
   color: #fff;
 }
