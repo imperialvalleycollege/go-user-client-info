@@ -4,7 +4,7 @@
         <a class="pure-menu-heading" href="/"><img title="User Client Info Application Logo" src="/favicon-96x96.png" class="pure-menu-heading-icon"> User Client Info</a>
 
         <ul class="pure-menu-list">
-            <li class="pure-menu-item pure-menu-selected"><a href="/visits" class="pure-menu-link">Recent Visits ({{ .Count }})</a></li>
+            <li class="pure-menu-item pure-menu-selected"><a href="/visits" class="pure-menu-link">Recent Visits (<span id="recent-visits-menu">{{ .Count }}</span>)</a></li>
         </ul>
     </div>
 </div>
@@ -12,11 +12,24 @@
 
 <div class="content-wrapper-no-splash">
     <div class="content">
-        <h2 class="content-head is-center">Recent Visits ({{ .Count }})</h2>
+        <h2 class="content-head is-center">Recent Visits (<span id="recent-visits-header">{{ .Count }}</span>)</h2>
 
         <div class="pure-g">
             <div class="l-box pure-u-1">
+              <!-- demo root element -->
+              <div id="grid">
+                <form id="search">
+                  Search <input name="query" v-model="searchQuery">
+                </form>
+                <vue-grid
+                  :data="gridData"
+                  :columns="gridColumns"
+                  :names="gridNames"
+                  :filter-key="searchQuery">
+                </demo-grid>
+              </div>
             {{ $showExternalIP := .ShowExternalIP}}
+            <!--
                 <table id="recent_visits_table" class="sortable pure-table pure-table-full-width" >
                   <thead>
                     <tr>
@@ -45,6 +58,7 @@
                 {{ end }}
                   </tbody>
                 </table>
+              -->
             </div>
 
         </div>
@@ -56,9 +70,107 @@
 
 </div>
 
+<script src="/assets/js/vue.js"></script>
+<script src="/assets/js/vue-resource.min.js"></script>
+<script src="/assets/js/moment.js"></script>
+
+<script type="application/javascript">
+  var entries = [];
+  function getData(json) {
+    console.log("Updating gridData");
+    entries = json.body;
+
+    grid.$set("gridData", entries);
+    document.getElementById("recent-visits-menu").innerHTML = entries.length;
+    document.getElementById("recent-visits-header").innerHTML = entries.length;
+  }
+</script>
+
+<script>
+  Vue.config.delimiters = ['${', '}'];
+  Vue.config.devtools = true;
+
+  // The initial load:
+  Vue.http.jsonp("/data").then(getData);
+</script>
+
+<!-- component template -->
+<script type="text/x-template" id="vue-grid-template">
+  <table class="pure-table pure-table-full-width">
+    <thead>
+      <tr>
+        <th v-for="key in names"
+          @click="sortBy(key)"
+          :class="{active: sortKey == key}">
+          ${key | capitalize}
+          <span class="arrow"
+            :class="sortOrders[key] > 0 ? 'asc' : 'dsc'">
+          </span>
+        </th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr v-for="entry in data | filterBy filterKey | orderBy sortKey sortOrders[sortKey]">
+        <td v-for="key in columns">
+          <span v-if="key == 'timestamp'">${entry[key] | moment}</span>
+          <span v-else>${entry[key]}</span>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</script>
+
+<script>
+// register the grid component
+Vue.component('vue-grid', {
+  template: '#vue-grid-template',
+  props: {
+    data: Array,
+    columns: Array,
+    names: Array,
+    filterKey: String
+  },
+  data: function () {
+    var sortOrders = {}
+    this.columns.forEach(function (key) {
+      sortOrders[key] = 1
+    })
+    return {
+      sortKey: '',
+      sortOrders: sortOrders
+    }
+  },
+  methods: {
+    sortBy: function (key) {
+      this.sortKey = key
+      this.sortOrders[key] = this.sortOrders[key] * -1
+    }
+  },
+  filters: {
+    moment: function (date) {
+      return moment(date).fromNow();//format('MMMM Do YYYY, h:mm:ss a');
+    }
+  }
+})
+
+// bootstrap the demo
+var grid = new Vue({
+  el: '#grid',
+  data: {
+    searchQuery: '',
+    gridColumns: ['timestamp', 'ip', 'externalIP', 'hostname', 'browser'],
+    gridNames: ['Time', 'IP Address', 'External IP', 'Hostname', 'Browser'],
+    gridData: entries
+  }
+})
+</script>
+
 <script src="/assets/js/sorttable.js"></script>
 <script>
-  sorttable.reverse(document.getElementById("recent_visits_table_body"));
-  setTimeout(location.reload.bind(location), 60000);
+  //sorttable.reverse(document.getElementById("recent_visits_table_body"));
+  //setTimeout(location.reload.bind(location), 60000);
+  setInterval(function() {
+    Vue.http.jsonp("/data").then(getData);
+  }, 10000);
 </script>
 {{end}}

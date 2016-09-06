@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"log"
@@ -10,6 +11,7 @@ import (
 	"os"
 	"path"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -82,6 +84,7 @@ func main() {
 	chttp.Handle("/", http.FileServer(http.Dir("public/assets/img/"+faviconTheme)))
 
 	http.HandleFunc("/", root)
+	http.HandleFunc("/data", data)
 	http.HandleFunc("/visits", visits)
 	http.HandleFunc("/external", external)
 
@@ -141,11 +144,26 @@ func serveResource(w http.ResponseWriter, req *http.Request) {
 
 // UserInfo holds the data that will be displayed onto the page.
 type UserInfo struct {
-	Timestamp string
-	IP        string
-	Hostname  string
-	Browser   string
-	Theme     string
+	Timestamp  string `json:"timestamp"`
+	IP         string `json:"ip"`
+	ExternalIP string `json:"externalIP"`
+	Hostname   string `json:"hostname"`
+	Browser    string `json:"browser"`
+}
+
+// UserInfoList is a list of UserInfo structs
+type UserInfoList []UserInfo
+
+func (slice UserInfoList) Len() int {
+	return len(slice)
+}
+
+func (slice UserInfoList) Less(i, j int) bool {
+	return slice[i].Timestamp < slice[j].Timestamp
+}
+
+func (slice UserInfoList) Swap(i, j int) {
+	slice[i], slice[j] = slice[j], slice[i]
 }
 
 // Add UserInfo to in-memory cache.
@@ -356,6 +374,59 @@ func visits(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func data(w http.ResponseWriter, r *http.Request) {
+	if disableRecentVisitsLink {
+		fmt.Println("Disabled Visits Link, so /data endpoint is unavailable")
+		http.NotFound(w, r)
+		return
+	}
+
+	//m := make(map[string]interface{})
+	s := make(UserInfoList, c.ItemCount())
+
+	i := 0
+	for key, value := range c.Items() {
+		//m[key] = value.Object
+
+		var userInfo UserInfo
+		userInfo = value.Object.(UserInfo)
+
+		obj, ok := externalIPs.Get(key)
+		if ok {
+			userInfo.ExternalIP = obj.(string)
+		}
+
+		s[i] = userInfo
+		i++
+	}
+
+	sort.Sort(sort.Reverse(s))
+	callback := r.FormValue("callback")
+
+	// ...
+
+	jsonBytes, err := json.Marshal(s)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+
+	if callback != "" {
+		jsonStr := callback + "(" + string(jsonBytes) + ")"
+		jsonBytes = []byte(jsonStr)
+		w.Header().Set("Content-Type", "application/javascript")
+	} else {
+		w.Header().Set("Content-Type", "application/json")
+	}
+
+	w.Write(jsonBytes)
+
+	// jData, err := json.Marshal(s)
+	// if err != nil {
+	// 	http.Error(w, err.Error(), http.StatusInternalServerError)
+	// }
+	// w.Header().Set("Content-Type", "application/json")
+	// w.Write(jData)
+}
 func external(w http.ResponseWriter, r *http.Request) {
 	timestamp := r.URL.Query().Get("timestamp")
 	ip := r.URL.Query().Get("ip")
