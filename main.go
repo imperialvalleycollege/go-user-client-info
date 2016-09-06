@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"log"
@@ -10,6 +11,7 @@ import (
 	"os"
 	"path"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -34,6 +36,7 @@ var (
 	showExternalIP          bool
 	showRecentVisitsLink    bool
 	disableRecentVisitsLink bool
+	useAsyncView            bool
 )
 
 func main() {
@@ -60,6 +63,7 @@ func main() {
 	flag.BoolVar(&showExternalIP, "show_external_ip", true, "Toggle the option to display the external IP address.")
 	flag.BoolVar(&showRecentVisitsLink, "show_recent_visits_link", true, "Simply hides the /visits URL from the web interface if it's set to false (but it's still accessible directly).")
 	flag.BoolVar(&disableRecentVisitsLink, "disable_recent_visits_link", false, "Completely disables the /visits URL (no longer accessible).")
+	flag.BoolVar(&useAsyncView, "use_async_view", true, "The /visits URL will use an asynchronous method for loading data onto the page.")
 	flag.Parse()
 
 	c = cache.New(time.Duration(cacheExpiration)*time.Minute, 30*time.Second)
@@ -82,6 +86,7 @@ func main() {
 	chttp.Handle("/", http.FileServer(http.Dir("public/assets/img/"+faviconTheme)))
 
 	http.HandleFunc("/", root)
+	http.HandleFunc("/data", data)
 	http.HandleFunc("/visits", visits)
 	http.HandleFunc("/external", external)
 
@@ -141,11 +146,26 @@ func serveResource(w http.ResponseWriter, req *http.Request) {
 
 // UserInfo holds the data that will be displayed onto the page.
 type UserInfo struct {
-	Timestamp string
-	IP        string
-	Hostname  string
-	Browser   string
-	Theme     string
+	Timestamp  string `json:"timestamp"`
+	IP         string `json:"ip"`
+	ExternalIP string `json:"externalIP"`
+	Hostname   string `json:"hostname"`
+	Browser    string `json:"browser"`
+}
+
+// UserInfoList is a list of UserInfo structs
+type UserInfoList []UserInfo
+
+func (slice UserInfoList) Len() int {
+	return len(slice)
+}
+
+func (slice UserInfoList) Less(i, j int) bool {
+	return slice[i].Timestamp < slice[j].Timestamp
+}
+
+func (slice UserInfoList) Swap(i, j int) {
+	slice[i], slice[j] = slice[j], slice[i]
 }
 
 // Add UserInfo to in-memory cache.
@@ -303,8 +323,20 @@ func visits(w http.ResponseWriter, r *http.Request) {
 	// The logic for outputting for our in-memory database (with recent request info) should go in here:
 	// Setup the Layout:
 
-	layoutPartial := path.Join("public/templates/"+templateFolder, "index.html")
+	// Default Visits View (specified via Config)
 	visitsInfoPartial := path.Join("public/templates/"+templateFolder, "visits.html")
+	if useAsyncView {
+		visitsInfoPartial = path.Join("public/templates/"+templateFolder, "visits_async.html")
+	}
+
+	// Default Visits View (specified via async URL Param)
+	async := r.FormValue("async")
+	if async == "1" {
+		visitsInfoPartial = path.Join("public/templates/"+templateFolder, "visits_async.html")
+	} else if async == "0" {
+		visitsInfoPartial = path.Join("public/templates/"+templateFolder, "visits.html")
+	}
+	layoutPartial := path.Join("public/templates/"+templateFolder, "index.html")
 
 	// Return a 404 if the template doesn't exist
 	info, err := os.Stat(visitsInfoPartial)
@@ -356,6 +388,61 @@ func visits(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func data(w http.ResponseWriter, r *http.Request) {
+	if disableRecentVisitsLink {
+		fmt.Println("Disabled Visits Link, so /data endpoint is unavailable")
+		http.NotFound(w, r)
+		return
+	}
+
+	//m := make(map[string]interface{})
+	s := make(UserInfoList, c.ItemCount())
+
+	i := 0
+	for key, value := range c.Items() {
+		//m[key] = value.Object
+
+		var userInfo UserInfo
+		userInfo = value.Object.(UserInfo)
+
+		if showExternalIP {
+			obj, ok := externalIPs.Get(key)
+			if ok {
+				userInfo.ExternalIP = obj.(string)
+			}
+		}
+
+		s[i] = userInfo
+		i++
+	}
+
+	sort.Sort(sort.Reverse(s))
+	callback := r.FormValue("callback")
+
+	// ...
+
+	jsonBytes, err := json.Marshal(s)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+
+	if callback != "" {
+		jsonStr := callback + "(" + string(jsonBytes) + ")"
+		jsonBytes = []byte(jsonStr)
+		w.Header().Set("Content-Type", "application/javascript")
+	} else {
+		w.Header().Set("Content-Type", "application/json")
+	}
+
+	w.Write(jsonBytes)
+
+	// jData, err := json.Marshal(s)
+	// if err != nil {
+	// 	http.Error(w, err.Error(), http.StatusInternalServerError)
+	// }
+	// w.Header().Set("Content-Type", "application/json")
+	// w.Write(jData)
+}
 func external(w http.ResponseWriter, r *http.Request) {
 	timestamp := r.URL.Query().Get("timestamp")
 	ip := r.URL.Query().Get("ip")
