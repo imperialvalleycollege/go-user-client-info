@@ -26,7 +26,7 @@
                   :fields="gridFields"
                   :columns="gridColumns"
                   :filter-key="searchQuery">
-                </demo-grid>
+                </vue-grid>
               </div>
             </div>
 
@@ -39,36 +39,9 @@
 
 </div>
 
-<script src="/assets/js/vue.js"></script>
+<script src="/assets/js/vue.min.js"></script>
 <script src="/assets/js/vue-resource.min.js"></script>
 <script src="/assets/js/moment.js"></script>
-
-<script type="application/javascript">
-  {{ if .ShowExternalIP }}
-  var fields = ['timestamp', 'ip', 'externalIP', 'hostname', 'browser'];
-  var columns = ['Time', 'IP Address', 'External IP', 'Hostname', 'Browser'];
-  {{ else }}
-  var fields = ['timestamp', 'ip', 'hostname', 'browser'];
-  var columns = ['Time', 'IP Address', 'Hostname', 'Browser'];
-  {{ end }}
-  var entries = [];
-  function getData(json) {
-    console.log("Updating gridData");
-    entries = json.body;
-
-    grid.$set("gridData", entries);
-    document.getElementById("recent-visits-menu").innerHTML = entries.length;
-    document.getElementById("recent-visits-header").innerHTML = entries.length;
-  }
-</script>
-
-<script>
-  Vue.config.delimiters = ['${', '}'];
-  Vue.config.devtools = true;
-
-  // The initial load:
-  Vue.http.jsonp("/data").then(getData);
-</script>
 
 <!-- component template -->
 <script type="text/x-template" id="vue-grid-template">
@@ -96,55 +69,80 @@
   </table>
 </script>
 
-<script>
-// register the grid component
-Vue.component('vue-grid', {
-  template: '#vue-grid-template',
-  props: {
-    data: Array,
-    fields: Array,
-    columns: Array,
-    filterKey: String
-  },
-  data: function () {
-    var sortOrders = {}
-    this.fields.forEach(function (key) {
-      sortOrders[key] = 1
-    })
-    return {
-      sortKey: '',
-      sortOrders: sortOrders
-    }
-  },
-  methods: {
-    sortBy: function (key) {
-      this.sortKey = key
-      this.sortOrders[key] = this.sortOrders[key] * -1
-    }
-  },
-  filters: {
-    moment: function (date) {
-      return moment(date).fromNow();
-    }
+<script type="application/javascript">
+  // Changing some Vue.js Default Config Parameters:
+  Vue.config.delimiters = ['${', '}'];
+  Vue.config.devtools = false;
+
+  // Global variables used inside Vue.js Code:
+  {{ if .ShowExternalIP }}
+  var fields = ['timestamp', 'ip', 'externalIP', 'hostname', 'browser'];
+  var columns = ['Time', 'IP Address', 'External IP', 'Hostname', 'Browser'];
+  {{ else }}
+  var fields = ['timestamp', 'ip', 'hostname', 'browser'];
+  var columns = ['Time', 'IP Address', 'Hostname', 'Browser'];
+  {{ end }}
+  var entries = [];
+
+  // JSONP Callback Function:
+  function getData(json) {
+    //console.log("Updating gridData");
+    entries = json.body;
+
+    grid.$set("gridData", entries);
+    document.getElementById("recent-visits-menu").innerHTML = entries.length;
+    document.getElementById("recent-visits-header").innerHTML = entries.length;
   }
-})
 
-// bootstrap the demo
-var grid = new Vue({
-  el: '#grid',
-  data: {
-    searchQuery: '',
-    gridFields: fields,
-    gridColumns: columns,
-    gridData: entries
-  }
-})
-</script>
+  // The initial load:
+  Vue.http.jsonp("/data").then(getData);
 
+  // register the grid component
+  Vue.component('vue-grid', {
+    template: '#vue-grid-template',
+    props: {
+      data: Array,
+      fields: Array,
+      columns: Array,
+      filterKey: String
+    },
+    data: function () {
+      var sortOrders = {}
+      this.fields.forEach(function (key) {
+        sortOrders[key] = 1
+      })
+      return {
+        sortKey: '',
+        sortOrders: sortOrders
+      }
+    },
+    methods: {
+      sortBy: function (key) {
+        this.sortKey = key
+        this.sortOrders[key] = this.sortOrders[key] * -1
+      }
+    },
+    filters: {
+      moment: function (date) {
+        return moment(date).fromNow();
+      }
+    }
+  })
 
-<script>
+  // bootstrap the vue-grid:
+  var grid = new Vue({
+    el: '#grid',
+    data: {
+      searchQuery: '',
+      gridFields: fields,
+      gridColumns: columns,
+      gridData: entries
+    }
+  });
+
+  // Set JSONP Callback Interval:
   setInterval(function() {
     Vue.http.jsonp("/data").then(getData);
-  }, 10000);
+  }, 30000);
 </script>
 {{end}}

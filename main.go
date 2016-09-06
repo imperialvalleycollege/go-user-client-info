@@ -322,10 +322,19 @@ func visits(w http.ResponseWriter, r *http.Request) {
 	}
 	// The logic for outputting for our in-memory database (with recent request info) should go in here:
 	// Setup the Layout:
-	async := r.FormValue("async")
+
+	// Default Visits View (specified via Config)
 	visitsInfoPartial := path.Join("public/templates/"+templateFolder, "visits.html")
-	if async == "1" || useAsyncView {
+	if useAsyncView {
 		visitsInfoPartial = path.Join("public/templates/"+templateFolder, "visits_async.html")
+	}
+
+	// Default Visits View (specified via async URL Param)
+	async := r.FormValue("async")
+	if async == "1" {
+		visitsInfoPartial = path.Join("public/templates/"+templateFolder, "visits_async.html")
+	} else if async == "0" {
+		visitsInfoPartial = path.Join("public/templates/"+templateFolder, "visits.html")
 	}
 	layoutPartial := path.Join("public/templates/"+templateFolder, "index.html")
 
