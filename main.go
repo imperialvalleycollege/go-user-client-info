@@ -36,6 +36,7 @@ var (
 	showExternalIP          bool
 	showRecentVisitsLink    bool
 	disableRecentVisitsLink bool
+	useAsyncView            bool
 )
 
 func main() {
@@ -62,6 +63,7 @@ func main() {
 	flag.BoolVar(&showExternalIP, "show_external_ip", true, "Toggle the option to display the external IP address.")
 	flag.BoolVar(&showRecentVisitsLink, "show_recent_visits_link", true, "Simply hides the /visits URL from the web interface if it's set to false (but it's still accessible directly).")
 	flag.BoolVar(&disableRecentVisitsLink, "disable_recent_visits_link", false, "Completely disables the /visits URL (no longer accessible).")
+	flag.BoolVar(&useAsyncView, "use_async_view", true, "The /visits URL will use an asynchronous for loading data onto the page.")
 	flag.Parse()
 
 	c = cache.New(time.Duration(cacheExpiration)*time.Minute, 30*time.Second)
@@ -320,9 +322,12 @@ func visits(w http.ResponseWriter, r *http.Request) {
 	}
 	// The logic for outputting for our in-memory database (with recent request info) should go in here:
 	// Setup the Layout:
-
-	layoutPartial := path.Join("public/templates/"+templateFolder, "index.html")
+	async := r.FormValue("async")
 	visitsInfoPartial := path.Join("public/templates/"+templateFolder, "visits.html")
+	if async == "1" || useAsyncView {
+		visitsInfoPartial = path.Join("public/templates/"+templateFolder, "visits_async.html")
+	}
+	layoutPartial := path.Join("public/templates/"+templateFolder, "index.html")
 
 	// Return a 404 if the template doesn't exist
 	info, err := os.Stat(visitsInfoPartial)
@@ -391,9 +396,11 @@ func data(w http.ResponseWriter, r *http.Request) {
 		var userInfo UserInfo
 		userInfo = value.Object.(UserInfo)
 
-		obj, ok := externalIPs.Get(key)
-		if ok {
-			userInfo.ExternalIP = obj.(string)
+		if showExternalIP {
+			obj, ok := externalIPs.Get(key)
+			if ok {
+				userInfo.ExternalIP = obj.(string)
+			}
 		}
 
 		s[i] = userInfo

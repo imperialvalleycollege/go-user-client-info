@@ -33,9 +33,27 @@ label {
   background-color: #4285f4
 }
 
+table.vue-grid.circle-blue,
+table.vue-grid.rectangle-blue {
+  border: 2px solid #4285f4 !important;
+}
+table.vue-grid.circle-blue th,
+table.vue-grid.rectangle-blue th {
+  background-color: #4285f4 !important;
+}
+
 .splash-container.circle-gold,
 .splash-container.rectangle-gold {
   background-color: #fbbc05
+}
+
+table.vue-grid.circle-gold,
+table.vue-grid.rectangle-gold {
+  border: 2px solid #fbbc05 !important;
+}
+table.vue-grid.circle-gold th,
+table.vue-grid.rectangle-gold th {
+  background-color: #fbbc05 !important;
 }
 
 .splash-container.circle-green,
@@ -43,9 +61,27 @@ label {
   background-color: #34a853
 }
 
+table.vue-grid.circle-green,
+table.vue-grid.rectangle-green {
+  border: 2px solid #34a853 !important;
+}
+table.vue-grid.circle-green th,
+table.vue-grid.rectangle-green th {
+  background-color: #34a853 !important;
+}
+
 .splash-container.circle-red,
 .splash-container.rectangle-red {
   background-color: #ea4335
+}
+
+table.vue-grid.circle-red,
+table.vue-grid.rectangle-red {
+  border: 2px solid #ea4335 !important;
+}
+table.vue-grid.circle-red th,
+table.vue-grid.rectangle-red th {
+  background-color: #ea4335 !important;
 }
 
 .pure-menu-heading-icon {
@@ -316,6 +352,63 @@ a.pure-button-primary {
         border: none;
     }
 
+}
+
+table.vue-grid {
+  border: 2px solid #4285f4;
+  border-radius: 3px;
+  background-color: #fff;
+}
+
+table.vue-grid th {
+  background-color: #4285f4;
+  color: rgba(255,255,255,0.66);
+  cursor: pointer;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -user-select: none;
+}
+
+table.vue-grid td {
+  background-color: #f9f9f9;
+}
+
+table.vue-grid th, table.vue-grid td {
+  min-width: 120px;
+  padding: 10px 20px;
+}
+
+table.vue-grid th.active {
+  color: #fff;
+}
+
+table.vue-grid th.active .arrow {
+  opacity: 1;
+}
+
+table.vue-grid .arrow {
+  display: inline-block;
+  vertical-align: middle;
+  width: 0;
+  height: 0;
+  margin-left: 5px;
+  opacity: 0.66;
+}
+
+table.vue-grid .arrow.asc {
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-bottom: 4px solid #fff;
+}
+
+table.vue-grid .arrow.dsc {
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 4px solid #fff;
+}
+
+#search {
+  margin-bottom: 10px;
 }
 
 /*
